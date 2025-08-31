@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Player with Subtitles</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .select-directory-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .select-directory-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .select-directory-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1.5fr 1.5fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .file-browser {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 400px;
+        }
+
+        .file-browser h3 {
+            margin-bottom: 15px;
+            color: #4CAF50;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+
+        .file-list {
+            max-height: 350px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 5px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 8px;
+            margin: 5px 0;
+            background: #3a3a3a;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+            max-width: 100%;
+        }
+
+        .file-item:hover {
+            background: #4a4a4a;
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+        }
+
+        .file-item.audio {
+            border-left: 4px solid #ff6b6b;
+        }
+
+        .file-item.subtitle {
+            border-left: 4px solid #feca57;
+        }
+
+        .file-item.directory {
+            border-left: 4px solid #48cae4;
+        }
+
+        .file-item.parent {
+            border-left: 4px solid #90a955;
+        }
+
+        .file-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .file-icon.audio {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .file-icon.subtitle {
+            background: #feca57;
+            color: #333;
+        }
+
+        .file-icon.other {
+            background: #6c757d;
+            color: white;
+        }
+
+        .file-icon.directory {
+            background: #48cae4;
+            color: white;
+        }
+
+        .file-icon.parent {
+            background: #90a955;
+            color: white;
+        }
+
+        .player-section {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .player-section h3 {
+            margin-bottom: 15px;
+            color: #4CAF50;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+
+        .audio-container {
+            position: relative;
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .current-track {
+            margin-bottom: 15px;
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        #audioPlayer {
+            width: 100%;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        .subtitle-container {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 120px;
+            margin-top: 10px;
+            position: relative;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .subtitle-display {
+            text-align: center;
+            font-size: 20px;
+            line-height: 1.5;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            font-family: 'Source Han Sans', 'Noto Sans CJK', 'Microsoft YaHei', sans-serif;
+        }
+
+        .no-files {
+            text-align: center;
+            color: #888;
+            font-style: italic;
+            margin-top: 50px;
+        }
+
+        .loading {
+            text-align: center;
+            color: #4CAF50;
+            margin-top: 20px;
+        }
+
+        .error {
+            background: #ff4757;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        /* Custom scrollbar */
+        .file-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .file-list::-webkit-scrollbar-track {
+            background: #1a1a1a;
+            border-radius: 4px;
+        }
+
+        .file-list::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+
+        .file-list::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+
+        /* Audio player styling */
+        audio::-webkit-media-controls-panel {
+            background-color: #2a2a2a;
+        }
+
+        audio::-webkit-media-controls-play-button,
+        audio::-webkit-media-controls-pause-button {
+            background-color: #4CAF50;
+            border-radius: 50%;
+        }
+
+        audio::-webkit-media-controls-timeline {
+            background-color: #444;
+            border-radius: 4px;
+        }
+
+        audio::-webkit-media-controls-current-time-display,
+        audio::-webkit-media-controls-time-remaining-display {
+            color: #fff;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Audio Player with Subtitles</h1>
+            <p>Select a directory to browse audio files with subtitle support</p>
+            <button id="selectDirBtn" class="select-directory-btn">
+                📁 Select Directory
+            </button>
+        </div>
+
+        <div class="main-content" id="mainContent" style="display: none;">
+            <div class="file-browser">
+                <h3>📂 File Browser</h3>
+                <div id="fileList" class="file-list">
+                    <div class="no-files">Select a directory to see files</div>
+                </div>
+            </div>
+
+            <div class="player-section">
+                <h3>🎧 Audio Player</h3>
+                <div class="audio-container">
+                    <div id="currentTrack" class="current-track">
+                        No track selected
+                    </div>
+                    
+                    <audio 
+                        id="audioPlayer" 
+                        controls 
+                        preload="metadata"
+                        crossorigin="anonymous">
+                        Your browser does not support the audio element.
+                    </audio>
+
+                    <div class="subtitle-container">
+                        <div id="subtitleDisplay" class="subtitle-display">
+                            Subtitles will appear here when available
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AudioPlayerWithSubtitles {
+            constructor() {
+                this.currentDirectoryHandle = null;
+                this.directoryStack = []; // Track navigation history
+                this.files = [];
+                this.currentAudioFile = null;
+                this.currentSubtitleFile = null;
+                this.subtitlesEnabled = false;
+                this.currentCues = [];
+                
+                this.initializeElements();
+                this.bindEvents();
+                this.checkFileSystemAPISupport();
+                this.loadDefaultDirectory();
+            }
+
+            initializeElements() {
+                this.selectDirBtn = document.getElementById('selectDirBtn');
+                this.mainContent = document.getElementById('mainContent');
+                this.fileList = document.getElementById('fileList');
+                this.audioPlayer = document.getElementById('audioPlayer');
+                this.currentTrack = document.getElementById('currentTrack');
+                this.subtitleDisplay = document.getElementById('subtitleDisplay');
+            }
+
+            checkFileSystemAPISupport() {
+                if (!('showDirectoryPicker' in window)) {
+                    this.selectDirBtn.textContent = '❌ File System Access API not supported';
+                    this.selectDirBtn.disabled = true;
+                    this.showError('Your browser does not support the File System Access API. Please use Chrome, Edge, or another Chromium-based browser.');
+                }
+            }
+
+            async loadDefaultDirectory() {
+                try {
+                    // Try to load downloads directory by default
+                    this.selectDirBtn.textContent = '📁 Loading Downloads...';
+                    this.selectDirBtn.disabled = true;
+                    
+                    this.currentDirectoryHandle = await window.showDirectoryPicker({
+                        startIn: 'downloads',
+                        mode: 'read'
+                    });
+                    
+                    this.directoryStack = []; // Reset stack for new root
+                    await this.loadFiles();
+                    this.renderFileList();
+                    this.mainContent.style.display = 'grid';
+                    
+                    this.selectDirBtn.textContent = `📁 ${this.currentDirectoryHandle.name}`;
+                    this.selectDirBtn.disabled = false;
+                } catch (error) {
+                    // If default directory loading fails, just reset the button
+                    this.selectDirBtn.textContent = '📁 Select Directory';
+                    this.selectDirBtn.disabled = false;
+                    if (error.name !== 'AbortError') {
+                        console.log('Could not load default directory:', error.message);
+                    }
+                }
+            }
+
+            bindEvents() {
+                this.selectDirBtn.addEventListener('click', () => this.selectDirectory());
+                this.audioPlayer.addEventListener('loadedmetadata', () => this.onAudioLoaded());
+                this.audioPlayer.addEventListener('timeupdate', () => this.updateSubtitles());
+                this.audioPlayer.addEventListener('seeked', () => this.updateSubtitles());
+            }
+
+            async selectDirectory() {
+                try {
+                    const directoryHandle = await window.showDirectoryPicker({
+                        startIn: 'downloads',
+                        mode: 'read'
+                    });
+                    
+                    this.selectDirBtn.textContent = '📁 Loading files...';
+                    this.selectDirBtn.disabled = true;
+                    
+                    this.currentDirectoryHandle = directoryHandle;
+                    this.directoryStack = []; // Reset stack for new root
+                    
+                    await this.loadFiles();
+                    this.renderFileList();
+                    this.mainContent.style.display = 'grid';
+                    
+                    this.selectDirBtn.textContent = `📁 ${this.currentDirectoryHandle.name}`;
+                    this.selectDirBtn.disabled = false;
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        // Try to handle system files error by retrying with different options
+                        if (error.message.includes('system files') || error.message.includes('permission')) {
+                            try {
+                                console.log('Retrying directory selection with force options...');
+                                const directoryHandle = await window.showDirectoryPicker({
+                                    mode: 'readwrite' // Try with readwrite mode
+                                });
+                                
+                                this.currentDirectoryHandle = directoryHandle;
+                                this.directoryStack = [];
+                                await this.loadFiles();
+                                this.renderFileList();
+                                this.mainContent.style.display = 'grid';
+                                this.selectDirBtn.textContent = `📁 ${this.currentDirectoryHandle.name}`;
+                            } catch (retryError) {
+                                this.showError('Unable to access directory. Try selecting a different folder or run in a less restricted environment.');
+                            }
+                        } else {
+                            this.showError('Failed to access directory: ' + error.message);
+                        }
+                    }
+                    this.selectDirBtn.disabled = false;
+                    if (this.selectDirBtn.textContent.includes('Loading')) {
+                        this.selectDirBtn.textContent = '📁 Select Directory';
+                    }
+                }
+            }
+
+            async loadFiles() {
+                this.files = [];
+                const audioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac'];
+                const subtitleExtensions = ['.vtt'];
+
+                try {
+                    // Add ".." entry if we're not at the root
+                    if (this.directoryStack.length > 0) {
+                        this.files.push({
+                            name: '..',
+                            type: 'parent',
+                            isDirectory: false
+                        });
+                    }
+
+                    for await (const entry of this.currentDirectoryHandle.values()) {
+                        if (entry.kind === 'directory') {
+                            // Add subdirectories
+                            this.files.push({
+                                name: entry.name,
+                                handle: entry,
+                                type: 'directory',
+                                isDirectory: true
+                            });
+                        } else if (entry.kind === 'file') {
+                            const fileName = entry.name.toLowerCase();
+                            const isAudio = audioExtensions.some(ext => fileName.endsWith(ext));
+                            const isSubtitle = subtitleExtensions.some(ext => fileName.endsWith(ext));
+                            
+                            if (isAudio || isSubtitle) {
+                                this.files.push({
+                                    name: entry.name,
+                                    handle: entry,
+                                    type: isAudio ? 'audio' : 'subtitle',
+                                    baseName: this.getBaseName(entry.name),
+                                    isDirectory: false
+                                });
+                            }
+                        }
+                    }
+                    
+                    // Sort: parent first, then directories, then files
+                    this.files.sort((a, b) => {
+                        if (a.type === 'parent') return -1;
+                        if (b.type === 'parent') return 1;
+                        if (a.isDirectory && !b.isDirectory) return -1;
+                        if (!a.isDirectory && b.isDirectory) return 1;
+                        return a.name.localeCompare(b.name);
+                    });
+                } catch (error) {
+                    this.showError('Failed to read directory contents: ' + error.message);
+                }
+            }
+
+            getBaseName(fileName) {
+                return fileName.substring(0, fileName.lastIndexOf('.'));
+            }
+
+            async navigateToDirectory(directoryFile) {
+                try {
+                    // Push current directory to stack
+                    this.directoryStack.push(this.currentDirectoryHandle);
+                    
+                    // Navigate to subdirectory
+                    this.currentDirectoryHandle = directoryFile.handle;
+                    
+                    // Update UI to show loading
+                    this.selectDirBtn.textContent = '📁 Loading...';
+                    
+                    // Load files in new directory
+                    await this.loadFiles();
+                    this.renderFileList();
+                    
+                    // Update button text to show current directory
+                    this.selectDirBtn.textContent = `📁 ${this.currentDirectoryHandle.name}`;
+                    
+                } catch (error) {
+                    this.showError('Failed to navigate to directory: ' + error.message);
+                    // Restore previous directory on error
+                    if (this.directoryStack.length > 0) {
+                        this.currentDirectoryHandle = this.directoryStack.pop();
+                    }
+                }
+            }
+
+            async navigateUp() {
+                try {
+                    if (this.directoryStack.length === 0) {
+                        return; // Already at root
+                    }
+                    
+                    // Pop parent directory from stack
+                    this.currentDirectoryHandle = this.directoryStack.pop();
+                    
+                    // Update UI to show loading
+                    this.selectDirBtn.textContent = '📁 Loading...';
+                    
+                    // Load files in parent directory
+                    await this.loadFiles();
+                    this.renderFileList();
+                    
+                    // Update button text
+                    this.selectDirBtn.textContent = `📁 ${this.currentDirectoryHandle.name}`;
+                    
+                } catch (error) {
+                    this.showError('Failed to navigate up: ' + error.message);
+                }
+            }
+
+            renderFileList() {
+                this.fileList.innerHTML = '';
+                
+                if (this.files.length === 0) {
+                    this.fileList.innerHTML = '<div class="no-files">No audio, subtitle files, or directories found</div>';
+                    return;
+                }
+
+                this.files.forEach(file => {
+                    const fileItem = document.createElement('div');
+                    let className = 'file-item';
+                    let iconText = '';
+                    
+                    if (file.type === 'parent') {
+                        className += ' parent';
+                        iconText = '↖️';
+                    } else if (file.type === 'directory') {
+                        className += ' directory';
+                        iconText = '📁';
+                    } else {
+                        className += ` ${file.type}`;
+                        iconText = file.type === 'audio' ? '🎵' : '📝';
+                    }
+                    
+                    fileItem.className = className;
+                    
+                    const icon = document.createElement('div');
+                    icon.className = `file-icon ${file.type === 'parent' ? 'other' : file.type}`;
+                    icon.textContent = iconText;
+                    
+                    const name = document.createElement('span');
+                    name.textContent = file.name;
+                    
+                    fileItem.appendChild(icon);
+                    fileItem.appendChild(name);
+                    
+                    // Add click handlers based on file type
+                    if (file.type === 'audio') {
+                        fileItem.style.cursor = 'pointer';
+                        fileItem.addEventListener('click', () => this.playAudioFile(file));
+                    } else if (file.type === 'directory') {
+                        fileItem.style.cursor = 'pointer';
+                        fileItem.addEventListener('click', () => this.navigateToDirectory(file));
+                    } else if (file.type === 'parent') {
+                        fileItem.style.cursor = 'pointer';
+                        fileItem.addEventListener('click', () => this.navigateUp());
+                    }
+                    
+                    this.fileList.appendChild(fileItem);
+                });
+            }
+
+            async playAudioFile(audioFile) {
+                try {
+                    this.currentAudioFile = audioFile;
+                    
+                    // Create object URL for the audio file
+                    const file = await audioFile.handle.getFile();
+                    const audioUrl = URL.createObjectURL(file);
+                    
+                    // Clear existing tracks
+                    const existingTracks = this.audioPlayer.querySelectorAll('track');
+                    existingTracks.forEach(track => track.remove());
+                    
+                    // Set audio source
+                    this.audioPlayer.src = audioUrl;
+                    this.currentTrack.textContent = `Now playing: ${audioFile.name}`;
+                    
+                    // Look for subtitle file
+                    await this.loadSubtitleFile(audioFile.baseName);
+                    
+                    // Update UI
+                    this.updateFileListSelection(audioFile.name);
+                    
+                } catch (error) {
+                    this.showError('Failed to play audio file: ' + error.message);
+                }
+            }
+
+            async loadSubtitleFile(baseName) {
+                // Find matching subtitle file - look for audioFileName + ".vtt"
+                const expectedSubtitleName = `${this.currentAudioFile.name}.vtt`;
+                const subtitleFile = this.files.find(file => 
+                    file.type === 'subtitle' && file.name === expectedSubtitleName
+                );
+                
+                if (subtitleFile) {
+                    try {
+                        // Get the subtitle file content
+                        const file = await subtitleFile.handle.getFile();
+                        const subtitleContent = await file.text();
+                        
+                        // Parse VTT content
+                        this.currentCues = this.parseVTTContent(subtitleContent);
+                        this.currentSubtitleFile = subtitleFile;
+                        
+                        // Create and add track element
+                        const track = document.createElement('track');
+                        track.kind = 'subtitles';
+                        track.label = 'Subtitles';
+                        track.srclang = 'en';
+                        track.src = URL.createObjectURL(new Blob([subtitleContent], { type: 'text/vtt' }));
+                        track.default = true;
+                        
+                        this.audioPlayer.appendChild(track);
+                        
+                        // Automatically enable subtitles
+                        this.subtitlesEnabled = true;
+                        this.subtitleDisplay.textContent = 'Subtitles loaded and ready';
+                        
+                    } catch (error) {
+                        this.showError('Failed to load subtitle file: ' + error.message);
+                        this.resetSubtitleUI();
+                    }
+                } else {
+                    this.resetSubtitleUI();
+                }
+            }
+
+            parseVTTContent(content) {
+                const cues = [];
+                const lines = content.split('\n');
+                let i = 0;
+                
+                // Skip header
+                while (i < lines.length && !lines[i].includes('-->')) {
+                    i++;
+                }
+                
+                while (i < lines.length) {
+                    // Find time line
+                    if (lines[i].includes('-->')) {
+                        const timeLine = lines[i];
+                        const [startTime, endTime] = timeLine.split('-->').map(t => t.trim());
+                        
+                        // Get text lines
+                        i++;
+                        const textLines = [];
+                        while (i < lines.length && lines[i].trim() !== '') {
+                            textLines.push(lines[i].trim());
+                            i++;
+                        }
+                        
+                        if (textLines.length > 0) {
+                            cues.push({
+                                startTime: this.parseTimeToSeconds(startTime),
+                                endTime: this.parseTimeToSeconds(endTime),
+                                text: textLines.join(' ')
+                            });
+                        }
+                    }
+                    i++;
+                }
+                
+                return cues;
+            }
+
+            parseTimeToSeconds(timeStr) {
+                // Parse HH:MM:SS.mmm or MM:SS.mmm format
+                const parts = timeStr.split(':');
+                let seconds = 0;
+                
+                if (parts.length === 3) {
+                    // HH:MM:SS.mmm
+                    seconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseFloat(parts[2]);
+                } else if (parts.length === 2) {
+                    // MM:SS.mmm
+                    seconds = parseInt(parts[0]) * 60 + parseFloat(parts[1]);
+                }
+                
+                return seconds;
+            }
+
+            updateSubtitles() {
+                if (!this.subtitlesEnabled || !this.currentCues.length) {
+                    return;
+                }
+                
+                const currentTime = this.audioPlayer.currentTime;
+                const currentCue = this.currentCues.find(cue => 
+                    currentTime >= cue.startTime && currentTime <= cue.endTime
+                );
+                
+                if (currentCue) {
+                    this.subtitleDisplay.textContent = currentCue.text;
+                } else {
+                    this.subtitleDisplay.textContent = '';
+                }
+            }
+
+            resetSubtitleUI() {
+                this.currentSubtitleFile = null;
+                this.currentCues = [];
+                this.subtitlesEnabled = false;
+                this.subtitleDisplay.textContent = 'No subtitles available';
+            }
+
+            updateFileListSelection(selectedFileName) {
+                // Remove previous selection
+                const items = this.fileList.querySelectorAll('.file-item');
+                items.forEach(item => item.style.background = '');
+                
+                // Highlight selected file
+                items.forEach(item => {
+                    if (item.textContent.includes(selectedFileName)) {
+                        item.style.background = '#4CAF50';
+                    }
+                });
+            }
+
+            onAudioLoaded() {
+                // Audio file has loaded, ready to play
+                console.log('Audio loaded successfully');
+            }
+
+            showError(message) {
+                const existingError = document.querySelector('.error');
+                if (existingError) {
+                    existingError.remove();
+                }
+                
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.textContent = message;
+                
+                this.selectDirBtn.parentNode.insertBefore(errorDiv, this.selectDirBtn.nextSibling);
+                
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.remove();
+                    }
+                }, 5000);
+            }
+        }
+
+        // Initialize the application when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new AudioPlayerWithSubtitles();
+        });
+    </script>
+</body>
+</html>
